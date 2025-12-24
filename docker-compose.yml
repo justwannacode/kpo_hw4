@@ -1,0 +1,116 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: gozon-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: gozon
+      RABBITMQ_DEFAULT_PASS: gozon
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  postgres-orders:
+    image: postgres:16
+    container_name: gozon-postgres-orders
+    environment:
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD: orders
+      POSTGRES_DB: orders_db
+    volumes:
+      - orders_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orders -d orders_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  postgres-payments:
+    image: postgres:16
+    container_name: gozon-postgres-payments
+    environment:
+      POSTGRES_USER: payments
+      POSTGRES_PASSWORD: payments
+      POSTGRES_DB: payments_db
+    volumes:
+      - payments_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payments -d payments_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  payments:
+    build:
+      context: ./services/payments-service
+    container_name: gozon-payments
+    environment:
+      DATABASE_URL: postgresql+asyncpg://payments:payments@postgres-payments:5432/payments_db
+      DATABASE_URL_SYNC: postgresql+psycopg2://payments:payments@postgres-payments:5432/payments_db
+      RABBITMQ_URL: amqp://gozon:gozon@rabbitmq:5672/
+      EXCHANGE_EVENTS: gozon.events
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres-payments:
+        condition: service_healthy
+    ports:
+      - "8002:8000"
+
+  orders:
+    build:
+      context: ./services/orders-service
+    container_name: gozon-orders
+    environment:
+      DATABASE_URL: postgresql+asyncpg://orders:orders@postgres-orders:5432/orders_db
+      DATABASE_URL_SYNC: postgresql+psycopg2://orders:orders@postgres-orders:5432/orders_db
+      RABBITMQ_URL: amqp://gozon:gozon@rabbitmq:5672/
+      EXCHANGE_EVENTS: gozon.events
+      EXCHANGE_WS: gozon.ws
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres-orders:
+        condition: service_healthy
+      payments:
+        condition: service_started
+    ports:
+      - "8001:8000"
+
+  gateway:
+    build:
+      context: ./services/api-gateway
+    container_name: gozon-gateway
+    environment:
+      ORDERS_SERVICE_URL: http://orders:8000
+      PAYMENTS_SERVICE_URL: http://payments:8000
+    depends_on:
+      orders:
+        condition: service_started
+      payments:
+        condition: service_started
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./services/frontend
+    container_name: gozon-frontend
+    environment:
+      GATEWAY_URL: http://gateway:8000
+      ORDERS_WS_BASE: ws://orders:8000/orders
+    depends_on:
+      gateway:
+        condition: service_started
+      orders:
+        condition: service_started
+    ports:
+      - "8080:8000"
+
+volumes:
+  orders_db_data:
+  payments_db_data:

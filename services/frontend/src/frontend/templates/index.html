@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Гоzон — мини фронтенд</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 1000px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
+    input, button { padding: 10px 12px; border-radius: 10px; border: 1px solid #ccc; font-size: 14px; }
+    button { cursor: pointer; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .muted { color: #666; font-size: 13px; }
+    pre { background: #f7f7f7; border-radius: 12px; padding: 12px; overflow: auto; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+  </style>
+</head>
+<body>
+  <h1>Гоzон — мини фронтенд</h1>
+  <p class="muted">Все запросы идут через Frontend → API Gateway → микросервисы. WebSocket: Frontend → Gateway → Orders.</p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Пользователь</h2>
+      <div class="row">
+        <label for="userId">user_id:</label>
+        <input id="userId" type="number" value="1" min="1" />
+        <button onclick="refreshBalance()">Обновить баланс</button>
+      </div>
+      <p>Баланс: <b id="balance">—</b></p>
+      <div class="row">
+        <button onclick="createAccount()">Создать счет</button>
+        <input id="topupAmount" type="number" value="5000" min="1" />
+        <button onclick="topUp()">Пополнить</button>
+      </div>
+      <p class="muted">Суммы — в копейках/центах.</p>
+    </div>
+
+    <div class="card">
+      <h2>Заказ</h2>
+      <div class="row">
+        <input id="orderAmount" type="number" value="1999" min="1" />
+        <input id="orderDesc" type="text" value="sweater" />
+        <button onclick="createOrder()">Создать заказ</button>
+      </div>
+      <p>Текущий заказ: <b id="currentOrder">—</b></p>
+      <p>Статус: <b id="currentStatus">—</b></p>
+      <p class="muted">После создания заказа откроется WebSocket и статус обновится автоматически.</p>
+    </div>
+
+    <div class="card" style="grid-column: 1 / span 2;">
+      <h2>Логи</h2>
+      <pre><code id="log"></code></pre>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
